@@ -87,7 +87,7 @@
 
                               echo '<div class="col-lg-3 col-12 col-md-6 mb-4">
                                        <label class="w-100 input-label" for="plant-' . $row['id'] . '">' . $plantLabel . '
-                                          <input type="checkbox" class="farmer-checkbox" id="plant-' . $row['id'] . '" data-plant-name="' . htmlspecialchars($plantName, ENT_QUOTES) . '" data-plant-label="' . htmlspecialchars($plantLabel, ENT_QUOTES) . '" autocomplete="off">
+                                          <input type="checkbox" class="farmer-checkbox" id="plant-' . $row['id'] . '" data-plant-id="' . $row['id'] . '" data-plant-name="' . htmlspecialchars($plantName, ENT_QUOTES) . '" data-plant-label="' . htmlspecialchars($plantLabel, ENT_QUOTES) . '" autocomplete="off">
                                           <span class="checkmark"></span>
                                        </label>
                                     </div>';

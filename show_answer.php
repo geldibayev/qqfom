@@ -1,12 +1,12 @@
 <?php
    session_start();
-   const WHEAT_DB_NAME = 'bugвЂdoy';
 
    function normalizePlantKey(string $value): string {
       $value = strtolower(trim($value));
-      $wheatAliases = ['bugdoy', "bug'doy", WHEAT_DB_NAME, 'bugрір‚вdoy'];
-
-      if (in_array($value, $wheatAliases, true)) {
+      if ($value === 'paxta') {
+         return 'paxta';
+      }
+      if (str_starts_with($value, 'bug')) {
          return 'bugdoy';
       }
 

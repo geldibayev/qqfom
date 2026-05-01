@@ -1,8 +1,6 @@
 <?php
    session_start();
 
-   const WHEAT_DB_NAME = 'bugвЂdoy';
-
    function exitWithError(?mysqli $conn = null): void {
       if ($conn instanceof mysqli) {
          mysqli_close($conn);
@@ -14,17 +12,13 @@
 
    function normalizePlantKey(string $value): string {
       $value = strtolower(trim($value));
-      $wheatAliases = ['bugdoy', "bug'doy", WHEAT_DB_NAME, 'bugрір‚вdoy'];
+      $wheatAliases = ['bugdoy', "bug'doy"];
 
       if (in_array($value, $wheatAliases, true)) {
          return 'bugdoy';
       }
 
       return $value;
-   }
-
-   function resolvePlantName(string $value): string {
-      return normalizePlantKey($value) === 'bugdoy' ? WHEAT_DB_NAME : trim($value);
    }
 
    $get_json = file_get_contents('php://input');
@@ -80,51 +74,33 @@
 
          $user_posibility_query .= $itemValue . "', '";
       } else {
-         $separatorPosition = strpos($itemId, '-');
-         if ($separatorPosition === false) {
-            exitWithError($conn);
-         }
+         if (preg_match('/^plant-(\d+)-(narxi|sentner)$/', $itemId, $matches) === 1) {
+            $plantId = (int) $matches[1];
+            $fieldType = $matches[2];
 
-         $rawPlantName = substr($itemId, 0, $separatorPosition);
-         $plant_name = resolvePlantName($rawPlantName);
-         $plantKey = normalizePlantKey($rawPlantName);
+            if ($fieldType === 'narxi') {
+               $prices[$plantId] = $itemValue;
+               $i++;
+               continue;
+            }
 
-         if (substr($itemId, -5) === 'narxi') {
-            $prices[$plant_name] = $itemValue;
-         } else {
-            $escapedPlantName = mysqli_real_escape_string($conn, $plant_name);
-            $query = "SELECT plants.id, consusption, oil_price, oil, worker, water FROM plants, oil WHERE plant_name='" . $escapedPlantName . "'";
-
+            $query = "SELECT plants.id, plant_name, consusption, oil_price, oil, worker, water FROM plants, oil WHERE plants.id=" . $plantId;
             $result = mysqli_query($conn, $query);
             $row = $result ? mysqli_fetch_array($result) : false;
             if (!$row) {
                exitWithError($conn);
             }
 
-            $plant_consumption[$plant_name] = (($itemValue / 10) * (float) $row['consusption']);
-            $plant_consumption[$plant_name] += ((float) $row['oil'] * ($itemValue / 10) * (float) $row['oil_price']);
+            $plant_consumption[$plantId] = (($itemValue / 10) * (float) $row['consusption']);
+            $plant_consumption[$plantId] += ((float) $row['oil'] * ($itemValue / 10) * (float) $row['oil_price']);
 
-            $kg[$plant_name] = $itemValue * 100;
-            $income = ($prices[$plant_name] ?? 0) * $kg[$plant_name] - $plant_consumption[$plant_name];
+            $kg[$plantId] = $itemValue * 100;
+            $income = ($prices[$plantId] ?? 0) * $kg[$plantId] - $plant_consumption[$plantId];
 
-            $plants_id[] = $row[0];
-            $user_plants_query .= $row[0] . "', '" . ($prices[$plant_name] ?? 0) . "', '" . $itemValue . "', 0,'" . $income . "', '" . $session_id . "', '" . $user_id . "');";
+            $plants_id[] = (int) $row['id'];
+            $user_plants_query .= $row['id'] . "', '" . ($prices[$plantId] ?? 0) . "', '" . $itemValue . "', 0,'" . $income . "', '" . $session_id . "', '" . $user_id . "');";
 
-            if ($plantKey === 'paxta') {
-               $j = 1;
-               $SIMPLEX[1][0] = ($SIMPLEX[1][0] ?? 0) - (float) $row['oil'] * ($itemValue / 10) * $paxta_gektar;
-               $SIMPLEX[2][0] = ($SIMPLEX[2][0] ?? 0) - (float) $row['water'] * $paxta_gektar;
-               $SIMPLEX[3][0] = ($SIMPLEX[3][0] ?? 0) - (float) $row['worker'] * $itemValue * $paxta_gektar;
-            } else {
-               $j++;
-            }
-
-            if ($plantKey === 'bugdoy') {
-               $SIMPLEX[1][0] = ($SIMPLEX[1][0] ?? 0) - (float) $row['oil'] * ($itemValue / 10) * $bugdoy_gektar;
-               $SIMPLEX[2][0] = ($SIMPLEX[2][0] ?? 0) - (float) $row['water'] * $bugdoy_gektar;
-               $SIMPLEX[3][0] = ($SIMPLEX[3][0] ?? 0) - (float) $row['worker'] * $itemValue * $bugdoy_gektar;
-            }
-
+            $j++;
             $SIMPLEX[0][$j] = 1;
             $SIMPLEX[1][$j] = (float) $row['oil'] * ($itemValue / 10);
             $SIMPLEX[2][$j] = (float) $row['water'];
@@ -135,6 +111,62 @@
             }
 
             mysqli_query($conn, $user_plants_query);
+         } else {
+            $separatorPosition = strpos($itemId, '-');
+            if ($separatorPosition === false) {
+               exitWithError($conn);
+            }
+
+            $rawPlantName = substr($itemId, 0, $separatorPosition);
+
+            if (substr($itemId, -5) === 'narxi') {
+               $prices[$rawPlantName] = $itemValue;
+            } else {
+               $plant_name = mysqli_real_escape_string($conn, $rawPlantName);
+               $query = "SELECT plants.id, consusption, oil_price, oil, worker, water FROM plants, oil WHERE plant_name='" . $plant_name . "'";
+
+               $result = mysqli_query($conn, $query);
+               $row = $result ? mysqli_fetch_array($result) : false;
+               if (!$row) {
+                  exitWithError($conn);
+               }
+
+               $plantKey = normalizePlantKey($rawPlantName);
+               $plant_consumption[$rawPlantName] = (($itemValue / 10) * (float) $row['consusption']);
+               $plant_consumption[$rawPlantName] += ((float) $row['oil'] * ($itemValue / 10) * (float) $row['oil_price']);
+
+               $kg[$rawPlantName] = $itemValue * 100;
+               $income = ($prices[$rawPlantName] ?? 0) * $kg[$rawPlantName] - $plant_consumption[$rawPlantName];
+
+               $plants_id[] = $row[0];
+               $user_plants_query .= $row[0] . "', '" . ($prices[$rawPlantName] ?? 0) . "', '" . $itemValue . "', 0,'" . $income . "', '" . $session_id . "', '" . $user_id . "');";
+
+               if ($plantKey === 'paxta') {
+                  $j = 1;
+                  $SIMPLEX[1][0] = ($SIMPLEX[1][0] ?? 0) - (float) $row['oil'] * ($itemValue / 10) * $paxta_gektar;
+                  $SIMPLEX[2][0] = ($SIMPLEX[2][0] ?? 0) - (float) $row['water'] * $paxta_gektar;
+                  $SIMPLEX[3][0] = ($SIMPLEX[3][0] ?? 0) - (float) $row['worker'] * $itemValue * $paxta_gektar;
+               } else {
+                  $j++;
+               }
+
+               if ($plantKey === 'bugdoy') {
+                  $SIMPLEX[1][0] = ($SIMPLEX[1][0] ?? 0) - (float) $row['oil'] * ($itemValue / 10) * $bugdoy_gektar;
+                  $SIMPLEX[2][0] = ($SIMPLEX[2][0] ?? 0) - (float) $row['water'] * $bugdoy_gektar;
+                  $SIMPLEX[3][0] = ($SIMPLEX[3][0] ?? 0) - (float) $row['worker'] * $itemValue * $bugdoy_gektar;
+               }
+
+               $SIMPLEX[0][$j] = 1;
+               $SIMPLEX[1][$j] = (float) $row['oil'] * ($itemValue / 10);
+               $SIMPLEX[2][$j] = (float) $row['water'];
+               $SIMPLEX[3][$j] = (float) $row['worker'] * $itemValue;
+
+               if (($SIMPLEX[0][0] ?? 0) < 0 || ($SIMPLEX[1][0] ?? 0) < 0 || ($SIMPLEX[2][0] ?? 0) < 0 || ($SIMPLEX[3][0] ?? 0) < 0) {
+                  exitWithError($conn);
+               }
+
+               mysqli_query($conn, $user_plants_query);
+            }
          }
       }
 

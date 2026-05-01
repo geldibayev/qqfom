@@ -28,8 +28,10 @@ function renderField(id, label, inputClass, suffixText, invalidText) {
 function getSelectedPlants() {
    return Array.from(document.querySelectorAll('#second-block input[type=checkbox]:checked')).map(function (item) {
       return {
+         id: item.dataset.plantId,
          name: item.dataset.plantName,
-         label: item.dataset.plantLabel
+         label: item.dataset.plantLabel,
+         key: `plant-${item.dataset.plantId}`
       };
    });
 }
@@ -70,7 +72,7 @@ function secondBtnClick(event, prev, next) {
 
       selectedPlants.forEach(function (plant) {
          dynamicHTML += renderField(
-            `${plant.name}-narxi`,
+            `${plant.key}-narxi`,
             `1 kg ${plant.label}`,
             'input-price',
             'narxi:',
@@ -125,7 +127,7 @@ function thrirdBtnClick(event, prev, next) {
 
    selectedPlants.forEach(function (plant) {
       dynamicHTML += renderField(
-         `${plant.name}-sentner`,
+         `${plant.key}-sentner`,
          plant.label,
          'input-sentner',
          'sentnerda:',
